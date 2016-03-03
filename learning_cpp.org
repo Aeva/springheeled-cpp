@@ -817,7 +817,7 @@ that can create a std::thread object, but does not necessarily need to
 into the async statement is assumed to return at some point.
 
 
-* study log day 4: review
+* study log day 4: review --- oh and regexes!
 Things that didn't quite stick.
 ** volatile
 This keyword is to prevent the compiler from optimizing out a
@@ -848,4 +848,29 @@ This is fairly easy - works like it does in python.
   int example_function(int arg1, int arg2 = -1) {
     return arg1 + arg2;
   }
+#+END_SRC
+** regexes!
+Apparently [[https://solarianprogrammer.com/2011/10/12/cpp-11-regex-tutorial/][has regexes]] and nobody told me!  Well then.
+
+C++11 uses javascript's gramar, though it seems to lack the same
+flags.
+
+Here is a simple usage example, wherein the regex finds all of the
+numbers in a given string.
+
+#+BEGIN_SRC c++
+#include <iostream>
+#include <string>
+#include <regex>
+
+int main () {
+  auto raw = std::string("vertex -1.624555 -4.999952 -8.506543");
+  std::smatch match_itr;
+  std::regex pattern("[0-9-.]+");
+  while(std::regex_search(raw, match_itr, pattern)) {
+    std::cout << match_itr[0] << "\n";
+    raw = match_itr.suffix().str();
+  }
+  return 0;
+}
 #+END_SRC

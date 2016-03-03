@@ -1,0 +1,26 @@
+This repository contains my notes on learning C++11 as well as
+reviewing a number of topics in the core language that differ the most
+from other programming languages.
+
+
+If you learned C++ a long time ago and want to get back up to speed
+again, or have simply been working in the land of dynamic languages
+for the last few years and want to get back to basics, this repository
+might be useful to help jog your memory.
+
+
+ ---> You can find my notes in the file [[learning_cpp.org][learning_cpp.org]]. <--
+
+
+The various topic directories contain simple source files that
+demonstrate valid syntax for various features in isolation.  If they
+need any special compiler flags, they will be noted in a comment in
+the source file.
+
+
+Please keep in mind a few things in mind:
+
+ - this repository is *not* an in-depth language tutorial.
+
+ - this repository is *not* intended to be an example of my abilities
+   as a programmer.

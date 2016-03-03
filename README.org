@@ -20,7 +20,7 @@ the source file.
 
 Please keep in mind a few things in mind:
 
- - this repository is *not* an in-depth language tutorial.
+ - This repository is *not* an in-depth language tutorial.
 
- - this repository is *not* intended to be an example of my abilities
+ - This repository is *not* intended to be an example of my abilities
    as a programmer.

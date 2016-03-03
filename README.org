@@ -9,7 +9,7 @@ for the last few years and want to get back to basics, this repository
 might be useful to help jog your memory.
 
 
- ---> You can find my notes in the file [[learning_cpp.org][learning_cpp.org]]. <--
+ --> You can find my notes in the file titled "[[learning_cpp.org][learning_cpp.org"]]. <--
 
 
 The various topic directories contain simple source files that

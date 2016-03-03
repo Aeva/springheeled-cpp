@@ -815,3 +815,37 @@ Where this differs from std::async - async is a high level interface
 that can create a std::thread object, but does not necessarily need to
 (see async policy).  Async returns a future, and the function passed
 into the async statement is assumed to return at some point.
+
+
+* study log day 4: review
+Things that didn't quite stick.
+** volatile
+This keyword is to prevent the compiler from optimizing out a
+variable.
+
+** mutable
+Mutable allows you to declare some members of a const class to be
+mutable, thus allowing you to change them.  This is useful for things
+like memoization, lazy eval, mutexes, and so on.
+
+Also, with lambdas, capture-by-value'd vars are const by default.  To
+change that,
+
+#+BEGIN_SRC c++
+int foo = 10;
+auto closure = [=]() mutable { foo = 20; };
+#+END_SRC
+
+** rvalue references
+These references seem to mostly be useful as function arguments to use
+different behavior for handling r-value params.  An example of this is
+a move constructor.
+
+** default args
+This is fairly easy - works like it does in python.
+
+#+BEGIN_SRC c++
+  int example_function(int arg1, int arg2 = -1) {
+    return arg1 + arg2;
+  }
+#+END_SRC

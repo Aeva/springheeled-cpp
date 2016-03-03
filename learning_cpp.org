@@ -1,0 +1,817 @@
+
+* study log day 1: learning C++11
+** rvalues and lvalues
+An l-value is anything that you can get the address of, and is always
+the "left hand side" of an assignment operator.
+
+The parameters of a function are always l-values, as is the LHS of an
+assignment operator.  Function calls that return a reference are also
+l-values.
+
+
+An expression is an r-value if it returns a temporary object, eg
+anything that doesn't have an explicit address.  So literals like 23
+and "c strings" are r-values.  If a function returns an object (not a
+reference), the return value is also an r-value.
+
+
+[[http://www.cprogramming.com/c%2B%2B11/rvalue-references-and-move-semantics-in-c%2B%2B11.html][This tutorial on move semantics]] has a nice explanation of l-values and
+r-values.
+
+** type inference rules, function templates, and 'auto'
+You can apparently (this is not new) do something like this:
+
+#+BEGIN_SRC c++
+template<typename T> void foo(T param) {
+  std::cout << param << "\n";
+}
+
+foo(20);
+foo(20.3);
+foo("hello world!");
+
+#+END_SRC
+
+It turns out that the rules for type inference used for function
+templates also all apply to the *auto* keyword.  The one exception of
+this is {1,2,3} syntax, which auto recognizes as some variety of
+array, but templates will barf over.
+
+** arrays are a distinct type from pointers
+Interestingly, arrays are a type that is defferent from a pointer, but
+will often be downgraded to a pointer.
+
+An array's length is also part of its type - so arrays of two
+different lengths but contain the same item type are not necessarily
+compatible with one another, though they wil degrade to the same
+pointer type.
+
+
+Array notation in a function parameter is, however, a pointer, unless
+it is written out so as to reference an array (in which length will be
+needed too).
+
+
+When an array degrades to a pointer, it is a pointer to the first item
+in the array.
+
+** decltype and type deduction
+"Given a name or an expression, decltype tells you the names or the
+expressions type."
+
+This seems to be used mostly for deriving a return type from an
+expression.
+
+
+In this example, 'auto' indicates that the return value is defined
+after the params, denoted by the '->' symbol.
+
+#+BEGIN_SRC c++
+  template<typename Container, typename Index>
+  auto
+  authAndAccess(Container&& c, Index i) 
+    -> decltype(std::forward<Container>(c)[i])
+  {
+    authenticateUser();
+    return std::forward<Container>(c)[i];
+  }
+#+END_SRC
+
+
+One of the many gotchas for decltype is that if decltype(x) will be
+'int' (assuming x is an int) but decltype((x)) will be int&.
+
+
+---
+
+Decltype is something that is never actually evaluated.  Here is
+another example of its use:
+
+#+BEGIN_SRC c++
+
+  auto floob = "This is a test!";
+  decltype(floob) thingy = "hello world";
+
+#+END_SRC
+** auto
+Auto can be tripped up by proxy classes.  For example
+std::vector<bool>[] returns a proxy class instead of a bool.  If the
+return result from a function is being indexed like this, a pointer to
+the return result might be generated before the return result is GC'd!
+Or it might behave as expected.
+
+Otherwise, auto is a miracle that makes C++'s proliferation of types
+to be bearable to deal with.
+
+-
+
+So if something is behaving wrong, it might be worthwhile to cast to
+what you think should be when assigning to an auto.
+
+** aliases vs TYPEDEF
+Aliases make function pointers more clear:
+
+#+BEGIN_SRC c++
+typedef void (*function_pointer)(int, const std::string&);
+using function_pointer = void (*)(int, const std::string&);
+#+END_SRC
+
+Basically, typedef is a keyword you put before a standard variable
+declaration, whereas 'using' is more like the assignment syntax.
+
+** nullptr vs NULL vs 0
+When you set a pointer's address to 0, the compiler will coerce this
+to mean it is now a null pointer rather than pointing to that specific
+address.
+
+The definition of "NULL" is implementation dependent, and is often 0.
+
+"nullptr" by contrast is the null pointer itself, and so is more
+semantically correct to use.
+
+
+* study log day 2: review of the basics, more C++11
+** pointers and references review
+#+BEGIN_SRC c++
+  int a = 10;
+  int& b = a;
+  b += 10;
+  std::cout << " 'a' is " << a << "\n";
+  std::cout << " 'b' is " << b << "\n";
+
+  int c = 10;
+  int* d = &c;
+  std::cout << " 'c' is " << c << "\n";
+  std::cout << "'&c' is " << &c << "\n";
+  std::cout << " 'd' is " << d << "\n";
+  std::cout << "'*d' is " << *d << "\n";
+  std::cout << "'&d' is " << &d << "\n";
+#+END_SRC
+
+
+So, the simple rule here is:
+
+ - &foo gives the address of foo
+ - foo gives the value of foo
+ - *foo gives the value of what foo points to
+
+...and, pointers are normal variables that store memory addresses.
+
+
+--------------
+
+Declaring pointers takes this form:
+
+ - type * foo;
+
+Whitespace is optional, so "type*foo", "type* foo" and "type *foo" are
+all valid.
+
+
+--------------
+
+Declaring reference variables takes this form:
+
+ - type & foo;
+
+Curiously in this case, the only acceptable values are l-values, and
+you don't provide the address.  I think this basically means that you
+pass an variable that presumably has an address associated to it, and
+the compiler is able to infer so without any special syntax.
+** casting semantics
+These two casting conventions will yield an identical output for
+value-based casting:
+#+BEGIN_SRC c++
+  double some_num = 1.4;
+  // C style
+  int a = (int) some_num;
+  // C++ style
+  int b = static_cast<int> (some_num);
+#+END_SRC
+
+C++ also includes 'dynamic_cast', 'reinterpret_cast', and
+'const_cast', which operate entirely on pointers and are used for some
+varieties of polymorphism.
+
+The static_cast mechanism can be used on pointers, too.  For example:
+#+BEGIN_SRC c++
+  SomeClass* foo = static_cast<SomeClass*>(malloc(sizeof(SomeClass)));
+#+END_SRC
+
+** malloc and free
+The dreaded malloc() takes a number of bytes and returns a void pointer
+to the uninitialized newly allocated memory.
+
+Calling free() on the pointer returned by malloc frees the memory.
+
+** function templates
+OMG these things are great!  They work with very similar rules to
+auto, differing only in what the array/universal initialization syntax
+denotes.  As such, they are a great way to sort of force duck typing
+onto C++.
+
+#+BEGIN_SRC c++
+#include <iostream>
+
+template<typename T> void foo(T param) {
+  std::cout << param << "\n";
+}
+
+int main() {
+
+  foo(20);
+  foo(20.3);
+  foo("hello world!");
+
+  return 0;
+}
+#+END_SRC
+** const, volitile, mutable
+Const means that the memory for the object shouldn't be modified.
+
+Volatile means that the compiler shouldn't try to optimize out a
+thing, supposedly useful for signal handlers.
+
+Mutable applies to class members and means that the member does not
+affect the externally visible state of the class.  This is used for
+things like memos, lazy evaluation, mutexes, etc.  This also allows
+you to make members of a const class modifiable.
+
+Mutable and const are mutually exclusive.  Const and Volatile can be
+combined.
+
+** public, protected, private, and friends
+Public works as you'd expect.
+
+Protected means children can also see it.
+
+Private is totally private to the base class.
+
+A class that is designated as a "Friend" can view all three.  A class
+defines who their friends are, not vice versa.
+
+** deleted functions and using auto& instead of auto
+
+Consider the following broken code and compiler error:
+
+#+BEGIN_SRC c++
+  for (auto future : futures) {
+    future.wait();
+  }
+#+END_SRC
+
+#+BEGIN_SRC txt
+locking_rewrite.cpp: In function ‘int main()’:
+locking_rewrite.cpp:80:22: error: use of deleted function ‘std::future<void>::future(const std::future<void>&)’
+   for (auto future : futures) {
+                      ^
+In file included from locking_rewrite.cpp:2:0:
+/usr/include/c++/5.3.1/future:832:7: note: declared here
+       future(const future&) = delete;
+#+END_SRC
+
+
+
+The important part here is the deleted function:
+
+ - "std::future<void>::future(const std::future<void>&)"
+
+What this means is that std::future objects can't be copied.  As a
+result, if you try to return (by value) one from a function, it'll
+call the copy constructor and fail.
+
+To fix this, you just change the code to read:
+#+BEGIN_SRC c++
+  for (auto& future : futures) {
+    future.wait();
+  }
+#+END_SRC
+
+...and everything will work fine.
+
+** async calls and std::bind
+Async calls return a 'future' type, which you can call a number of
+variations of 'get', 'wait' etc on.  This is really nice for job-based
+concurrency, as you can just define your thread as having input and
+producing some output, and not worry about using queues etc to
+communicate.
+
+#+BEGIN_SRC c++
+auto future = std::async(std::launch::async, f, arg1, arg2...)
+#+END_SRC
+
+
+This however screams "20 type pileup", not to mention it is annoying
+to have to tell it that you absolutely do want threading to be
+employed.
+
+-
+
+std::bind is a template function that is handy because it encapsulates
+the arguments and is good for things like timeouts.  This lends itself
+well with the async stuff, because you can write a small boilerplate
+method like so:
+
+#+BEGIN_SRC c++
+std::dequeue<std::future<void> > futures;
+template<typename T> void async(T call) {
+  futures.push(std::async(std::launch::async, call));
+}
+#+END_SRC
+
+... and call it like so:
+
+#+BEGIN_SRC c++
+async(std::bind(some_method, some_arg, some_arg));
+#+END_SRC
+
+
+Of course, this could also just be re-written to use multiple argument
+syntax and eschew the std::bind; but I like this because it makes the
+boiler plate simple.
+
+** default arguments
+Super easy:
+#+BEGIN_SRC c++
+template<typename T> void print (T value, const char* label = "result") {
+  std::cout << label << ": " << value << "\n";
+}
+
+// ..
+
+print(10);
+print("hello");
+print("hello", "some string");
+#+END_SRC
+
+** range based for-loops
+Ranged based for loops provide a nice syntax for looping over
+iterators.
+
+#+BEGIN_SRC c++
+auto nums = std::vector<int>;
+for (int i=0; i<10; i+=1) {
+  nums.push_back(i);
+}
+
+// ranged base loop
+for (int i : nums) {
+  std::cout << i << "\n";
+}
+#+END_SRC
+
+** rvalue references
+An r-value reference is a new reference type that lets you store a
+temporary object.  An example:
+
+#+BEGIN_SRC c++
+string get_name() {
+  return "Aeva";
+}
+
+string copied = get_name();
+string&& moved_1 = get_name();
+string&& moved_2 = get_name();
+#+END_SRC
+
+In this example, both 'moved' vars will have the same final address.
+The rvalue reference syntax shown above will produce lvalues 'moved_1'
+and 'moved_2', which will both have the same memory address.  The
+lvalue 'copied' will however have its own unique memory address.
+
+---
+
+Now, what happens when && refs are used as function arguments?
+
+#+BEGIN_SRC c++
+template<typename T> T detect(T& name) {
+  std::cout << "---> L\n\n";
+  return name;
+}
+template<typename T> T detect(T&& name) {
+  std::cout << "---> R\n\n";
+  return name;
+}
+
+
+auto foo = detect("hello");  // r value
+detect(foo); // l value
+detect(detect(foo)); // l value, then r value
+#+END_SRC
+
+wheeeeee!
+
+** move constructors and std::move
+A class can have a copy constructor, which is a method without a
+return type that takes this form:
+
+  ClassName (const ClassName& other) { ... }
+
+
+Note that "const ClassName& arg" will catch both l-values and r-values
+unless a rvalue reference constructor also exists, such as:
+
+
+We can also define a move constructor now,
+
+  ClassName (ClassName&& other) { ... }
+
+
+Where the copy constructor is responsible for manually making a deep
+copy of another instance of the class, a move constructor simply does
+this:
+
+  1. copy over primitives (eg ints)
+
+  2. for pointers, create a new pointer of the same type, assign the
+     new one the value of the old one, and zero out the old pointer.
+
+
+The idea here being that we really just want to reuse existing memory,
+and we want the new things to be "owned" by our class.
+
+
+ --- std::move ---
+
+Sometimes however you need to chain move constructors.  You can't
+simply call the move constructor for the child object because you only
+have an l-value handle for it.
+
+What std::move does is you pass in an l-value, and get an r-value in
+return.
+
+** class constructor member initialization list
+It is a syntax for initializing non-static member variables of the
+class.  The member initialization list is executed before the
+constructor is.
+
+
+A contrived example:
+#+BEGIN_SRC c++
+class Floob
+{
+  public:
+  Floob(int n)
+    : a_vars( new int[n] )
+    , b_vars( new double[n] )
+  {}
+  ~Floob()
+  {
+    delete [] a_vars;
+    delete [] b_vars;
+  }
+  private:
+  int *a_vars;
+  double *b_vars;
+}
+#+END_SRC
+
+
+* study log day 3: more review, more C++11
+** unique_ptr
+Smart pointers are defined under the header <memory>.
+
+A unique pointer is a container for a raw pointer, which prevents
+copying its contained pointer.
+
+The copy constructor and assignment constructers on the class are
+deleted, so one can only use the move constructor to hand unique_ptrs
+around.
+
+---
+
+It seems that a unique pointer can Only Very Definatively be set via
+its constructor, the reset command, or the move constructor.
+
+uptr = std::move(other_uptr); works
+uptr = std::move(some_lvalue); refuses to compile
+
+---
+
+The point of these is a pointer type that can only ever live in one
+scope at a time, and thus can be predictably garbage collected.
+
+** shared_ptr
+Shared pointers are another container type for wrapping raw pointers.
+Unlike unique_ptr, it may be copied, but it employes reference
+counting.  When the last copy of a shared pointer is deleted, only
+then is the encapsulated object reference counted.
+
+
+Shared pointers are *awesome*.
+
+** weak_ptr
+These are compatible with shared pointers, but do not effect reference
+counting, and therefor may be used to prevent reference loops.
+
+** lambdas
+Lambda expressions allow you to construct closure objects (and thus
+closure classes for those objects).  These are probably most
+powerfully demonstrated with the standard library's <algorithm>
+functions, providing the joy of basic functional programming through a
+very fraught implementation.
+
+The syntax is simple:
+
+#+BEGIN_SRC c++
+auto closure = [capture](args) {body};
+#+END_SRC
+
+Closure objects are able to access some of the local scope that they
+were defined in via the capture clause.  Some permutations:
+
+#+BEGIN_SRC c++
+// some local scope
+int x = 10;
+auto y = std::shared_ptr<int>(new int(20));
+
+// capture nothing
+auto closure_a = [](int arg1) { return arg1; };
+
+// capture all local scope by reference
+auto closure_b = [&]() { return x+y; };
+
+// capture explicit local variables by reference
+auto closure_b = [&x, &y]() { return x+y; };
+
+// capture all local scope by value
+auto closure_b = [=]() { return x+y; };
+
+// capture explicit local scope by value
+auto closure_b = [x, y]() { return x+y; };
+#+END_SRC
+
+
+You can approximate r-value capturing by using std::bind and the
+arguments list:
+#+BEGIN_SRC c++
+auto special_snowflake = std::unique_ptr<int>(new int(20));
+auto closure = std::bind([](const std::unique_ptr<int>& floob) {},
+                            std::move(special_snowflake));
+#+END_SRC
+
+
+The non-const variation requires the 'mutable' keyword:
+#+BEGIN_SRC c++
+auto closure = std::bind([](std::unique_ptr<int>& floob) mutable {},
+                            std::move(special_snowflake));
+#+END_SRC
+
+
+Some final notes on lambdas,
+
+ - They only capture *local scope* - so if you generate one in a
+   function, you can only access member variables via the function's
+   'this' pointer.  Which is fraught.
+
+ - They are somewhat preferential to bind in most cases, according to
+   that book I'm reading right now.
+
+** variadic templates, variable arg functions
+This is a syntax for variable type arguments for class and function
+templates.  It looks something like this:
+
+#+BEGIN_SRC c++
+// variadic class template
+template<typename First, typename... Rest> class tuple;
+
+// variadic function template
+template<typename... Params>
+void printf(const std::string &str_format, Params... parameters);
+#+END_SRC
+
+
+To access the arguments list, you'd do so with "args..." in the
+function.  Wikipedia proclaims that there is no simple way to iterate
+over the arguments the list unsurprisingly, though you can pass it on
+to a different method easily:
+
+#+BEGIN_SRC c++
+  some_function(args...);
+#+END_SRC
+
+
+At a guess, this is mainly used for meta programming.
+
+** classes
+The basic syntax looks like this:
+#+BEGIN_SRC c++
+  class Thingy {
+  public:
+    Thingy() : res(new Resource) {
+      std::cout << "thingy initialized\n";
+    }
+    Thingy(const Thingy&) {
+      std::cout << "copy constructor was called\n";
+    }
+    Thingy(Thingy&&) {
+      std::cout << "move constructor was called\n";
+    }
+    ~Thingy() {
+      std::cout << "thingy deleted\n";
+    }
+    Thingy operator=(const Thingy& rhs);
+    Thingy operator=(const Thingy& rhs);
+    Thingy &operator[](int arg);
+    operator int() { return 10; } // type conversion operator
+    Thingy(int rhs); // constructor for implicit conversion eg "Thingy foo = 10;"
+  protected:
+    // pseudo-private namespace that child classes and "friends" can access
+  private:
+    // actually private, except to "friends"
+    unique_ptr<Resource> res;
+  };
+#+END_SRC
+
+** inheritance
+Basic inheritance looks like so:
+#+BEGIN_SRC c++
+  class BaseClass {
+  public:
+      // ...
+  };
+
+  class ChildClass : public BaseClass {
+  public:
+      // ...
+  };
+#+END_SRC
+
+An instance of a child class is considered to have a "sub-object" of
+the type of it's parent class.  So that means the parent constructor
+is always called, like so:
+
+ 1. parent constructs
+ 2. child constructs
+
+Deletion happens in reverse order, so:
+
+ 1. child destructs
+ 2. parent destructs
+
+
+By default, the compiler assumes you want the vanilla constructor.  To
+specify otherwise, you would define a child class like so:
+
+#+BEGIN_SRC c++
+class ChildClass : public BaseClass {
+public:
+  ChildClass() : BaseClass(10) {
+    cout << "derived class initializer called\n";
+  };
+  ~ChildClass() {
+    cout << "derived class destructor called\n";
+  };
+};
+#+END_SRC
+
+** polymorphism
+If you have a pointer to BaseClass, but it points to DerivedClass, it
+will only be able to call methods that were implemented on BaseClass.
+
+Unless you marked a method on BaseClass as "virtual", in which case it
+will call DerivedClass's implementation of the method.
+
+The reason for this is static_binding is used at compile time (early
+binding), unless the keyword is present, in which case dynamic binding
+(late binding) is used instead to determine what function to call.
+
+A good rule is that if you are going to have a virtual method on
+BaseClass, you should mark the DerivedClass version of that method
+with "override".  This will prevent the program from compiling unless
+there is actually the desired corresponding virtual method.
+
+-
+
+A base class can be left as an "abstract base class" by simply leaving
+one or more virtual functions as stubs.  These are called "pure
+virtual" functions, since they can't be statically bound.
+
+** multiple inheritance
+You can have a class derive from multiple parent classes in C++ :(
+
+In these cases you will also likely need to use the 'explicit parent
+constructor' syntax.
+
+#+BEGIN_SRC c++
+class ChildClass : public BaseClassA, public BaseClassB {
+public:
+  ChildClass() : BaseClassA(10), BaseClassB("meep") {
+  };
+};
+#+END_SRC
+
+
+In the odd case that you have a hierarchy like so:
+
+ a
+ b->a
+ c->a
+ d->b,c
+
+And are not using poly morphism, and call upon an instance of 'd' a
+method that is defined on 'a', there is the question as to which
+version of 'a' should be used - the one that belongs to 'b' or the one
+that belongs to 'c'?
+
+The solution here is to define 'b' and 'c' like so:
+
+#+BEGIN_SRC c++
+class ExampleB : public virtual ExampleA {};
+#+END_SRC
+
+And then for an instance of class 'd', there will only be one created
+instance of class 'a' instead of two.
+
+** c-strings vs string objects
+C-strings are \0 terminated arrays of bytes, of which the compiler has
+syntatic sugar for recognizing and composing ascii encoded bytes, and
+a number of helper functions exist.
+
+C-strings are often of the type (const char*).
+
+A std::string is an object that encapsulates these to make things a
+lot cleaner.  You instance them by passing a c-string into the
+constructor.  The class defines a number of member functions to
+replace the functionality standard library for manipulating c-strings.
+
+** exceptions
+Similar to JS, but the type system applies, allowing for multiple
+catch statements.
+
+#+BEGIN_SRC c++
+try {
+  throw ("error");
+}
+catch (const char* err) {
+  // what actually gets called in this case
+}
+catch (CustomErrorClass foo) {
+  // what might have been called instead
+}
+#+END_SRC
+
+If an exception is not called, you'll get something in the consoles
+saying "Aborted (core dumped)" (or whatever platform-specific crash
+handler).
+
+** debugging (gcc)
+You can add debugging symbols by adding '-g' to the compiler.  This
+will pick the native format for the platform.  '-ggdb' produces
+debugging symbols for gdb, which seems to work fine with nemiver.
+
+ > g++ -std=c++11 -ggdb sourcefile.cpp
+ > nemiver a.out
+
+** custom namespaces
+Simple!
+
+#+BEGIN_SRC c++
+namespace FancyNamespace {
+    class blorf {
+    };
+
+    void some_function () {
+    };
+}
+#+END_SRC
+
+** atomic types
+The std::atomic template is used to produce the [[http://en.cppreference.com/w/cpp/atomic/atomic][atomic types]] from
+"trivially copyable" types like int.
+
+Atomic types are supposedly types where it is "impossible to observe"
+the memory of the object in a halfway complete state.  This could mean
+that for some types, thier read/write ops are single instruction.  It
+could also mean that a lock is employed behind the scenes.
+
+-
+
+Atomic types are praised for being "lockless", but are still
+effectively a form of synchronization primative :P.
+
+As best I can tell, you would use these when an atomic type is the
+only thing you want to share between threads.
+
+Atomics are non-movable and non-copiable.
+
+** std::thread
+[[http://en.cppreference.com/w/cpp/thread/thread/thread][Thread objects]], when constructed without args do not represent any
+threads.  A move constructor is provided, and you can also construct a
+thread with a function and some arguments.  There is no copy
+constructor.
+
+In the event that a function and arguments was passed without error, a
+new thread will be created, and the thread will branch to the provided
+function (the return value is ignored).  The returned thread object
+will represent the newly created thread.
+
+There can only be one thread object to a thread.
+
+Predictably there is a mechanism for joining and one for detaching the
+thread.
+
+Where this differs from std::async - async is a high level interface
+that can create a std::thread object, but does not necessarily need to
+(see async policy).  Async returns a future, and the function passed
+into the async statement is assumed to return at some point.

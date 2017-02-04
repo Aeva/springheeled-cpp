@@ -489,7 +489,8 @@ uptr = std::move(some_lvalue); refuses to compile
 ---
 
 The point of these is a pointer type that can only ever live in one
-scope at a time, and thus can be predictably garbage collected.
+scope at a time, and thus the memory can be automatically freed when
+the scope exits.
 
 ** shared_ptr
 Shared pointers are another container type for wrapping raw pointers.
@@ -593,8 +594,13 @@ to a different method easily:
 
 At a guess, this is mainly used for meta programming.
 
-** classes
-The basic syntax looks like this:
+** classes and structs
+Classes and structs are literally the same damn thing in C++.  The
+only difference between the two that I am aware of, is that the
+members of structs are public by default whereas the members of
+classes are private by default.
+
+The basic syntax for both looks like this:
 #+BEGIN_SRC c++
   class Thingy {
   public:
@@ -610,7 +616,6 @@ The basic syntax looks like this:
     ~Thingy() {
       std::cout << "thingy deleted\n";
     }
-    Thingy operator=(const Thingy& rhs);
     Thingy operator=(const Thingy& rhs);
     Thingy &operator[](int arg);
     operator int() { return 10; } // type conversion operator
@@ -683,9 +688,25 @@ there is actually the desired corresponding virtual method.
 
 -
 
-A base class can be left as an "abstract base class" by simply leaving
-one or more virtual functions as stubs.  These are called "pure
-virtual" functions, since they can't be statically bound.
+A base class can be left as an "abstract base class" by defining one
+or more virtual methods as not having a body.  These are called "pure
+virtual" functions, since they can't be statically bound.  Pure
+virtual functions are defined like so:
+
+#+BEGIN_SRC c++
+  struct AbstractBaseClassExample
+  {
+    virtual void OverrideMe() = 0;
+  };
+#+END_SRC
+
+A derrived class might then look something like this:
+#+BEGIN_SRC c++
+  struct DerivedClass : public AbstractBaseClassExample
+  {
+    void OverrideMe() override;
+  };
+#+END_SRC
 
 ** multiple inheritance
 You can have a class derive from multiple parent classes in C++ :(
@@ -850,7 +871,7 @@ This is fairly easy - works like it does in python.
   }
 #+END_SRC
 ** regexes!
-Apparently [[https://solarianprogrammer.com/2011/10/12/cpp-11-regex-tutorial/][has regexes]] and nobody told me!  Well then.
+Apparently C+11 [[https://solarianprogrammer.com/2011/10/12/cpp-11-regex-tutorial/][has regexes]] and nobody told me!  Well then.
 
 C++11 uses javascript's gramar, though it seems to lack the same
 flags.

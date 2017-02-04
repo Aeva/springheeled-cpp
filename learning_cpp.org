@@ -628,6 +628,39 @@ The basic syntax for both looks like this:
   };
 #+END_SRC
 
+** defining class methods
+In more complicated projects or in libraries, a class and all of its
+methods are usually declared in a header file separately from its
+method implementations.
+
+The example class in the section above defines its constructor and
+destructor methods inline, but then only declares the operator
+methods.
+
+Here is an example of defining your methods separately from their
+declaration:
+
+#+BEGIN_SRC c++
+  // This would usually be in some header file.
+  struct AnotherThing
+  {
+    AnotherThing();
+    void SpectacularMethod (int beep);
+  };
+  
+  // The following methods would then be in a cpp file that includes the
+  // header:
+
+  AnotherThing::AnotherThing() {
+    std::cout << "AnotherThing's constructor was called.\n";
+  }
+
+  AnotherThing::SpectacularMethod (int beep)
+  {
+    std::cout << beep << " is a number!\n";
+  }
+#+END_SRC
+
 ** inheritance
 Basic inheritance looks like so:
 #+BEGIN_SRC c++
